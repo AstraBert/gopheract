@@ -2,6 +2,8 @@ package gopheract
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/openai/openai-go/v2"
@@ -12,12 +14,12 @@ type ReActAgent interface {
 	Think() (string, error)
 	Act() (*Action, error)
 	Observe() (string, error)
-	Run(string, func(string) any, func(Action) any, func(string) any) error
+	Run(string, func(string), func(Action), func(string), func(string)) error
 }
 
 type ToolDefinition[T any] struct {
-	Fn          func(...any) any
-	Args        T
+	Fn          func(T) any
+	Name        string
 	Description string
 }
 
@@ -25,7 +27,22 @@ type OpenAIReActAgent struct {
 	Llm                  *OpenAILLM
 	ChatHistory          []*ChatMessage
 	SystemPromptTemplate *template.Template
-	Tools                map[string]ToolDefinition[any]
+	Tools                []*ToolDefinition[any]
+}
+
+func (o *OpenAIReActAgent) BuildSystemPrompt() (*ChatMessage, error) {
+	toolStr := "| Name | Description |\n|-------|-------|\n"
+	for _, tool := range o.Tools {
+		toolStr += fmt.Sprintf("| %s | %s |\n", tool.Name, tool.Description)
+	}
+	toolStr += "\n\n"
+	var buf strings.Builder
+	err := o.SystemPromptTemplate.Execute(&buf, toolStr)
+	if err != nil {
+		return nil, err
+	}
+	sysPrompt := buf.String()
+	return &ChatMessage{Role: "system", Content: sysPrompt}, nil
 }
 
 func (o *OpenAIReActAgent) BuildChatHistory() any {
@@ -57,6 +74,7 @@ func (o *OpenAIReActAgent) Think() (string, error) {
 	if !ok {
 		return "", errors.New("error while generating the response: unexpected structured output")
 	}
+	o.ChatHistory = append(o.ChatHistory, &ChatMessage{Role: "assistant", Content: typedResponse.Thought})
 	return typedResponse.Thought, nil
 }
 
@@ -74,6 +92,7 @@ func (o *OpenAIReActAgent) Observe() (string, error) {
 	if !ok {
 		return "", errors.New("error while generating the response: unexpected structured output")
 	}
+	o.ChatHistory = append(o.ChatHistory, &ChatMessage{Role: "assistant", Content: typedResponse.Observation})
 	return typedResponse.Observation, nil
 }
 
@@ -94,6 +113,43 @@ func (o *OpenAIReActAgent) Act() (*Action, error) {
 	return &typedResponse, nil
 }
 
-func (o *OpenAIReActAgent) Run() {
-
+func (o *OpenAIReActAgent) Run(prompt string, thoughtCallback func(string), actionCallback func(Action), observationCallback func(string), stopCallback func(string)) error {
+	sysMsg, err := o.BuildSystemPrompt()
+	if err != nil {
+		return err
+	}
+	o.ChatHistory = append(o.ChatHistory, sysMsg)
+	o.ChatHistory = append(o.ChatHistory, &ChatMessage{Role: "user", Content: prompt})
+	for {
+		thought, err := o.Think()
+		if err != nil {
+			return err
+		}
+		thoughtCallback(thought)
+		action, err := o.Act()
+		if err != nil {
+			return err
+		}
+		if action.ActionType == "_done" {
+			stopCallback(action.StopReason.Reason)
+			break
+		} else if action.ActionType == "tool_call" {
+			actionCallback(*action)
+			for _, tool := range o.Tools {
+				if tool.Name == action.ToolCall.Name {
+					result := tool.Fn(action.ToolCall.Args)
+					o.ChatHistory = append(o.ChatHistory, &ChatMessage{Role: "user", Content: fmt.Sprintf("Tool call result from %s: %v", tool.Name, result)})
+					break
+				}
+			}
+		} else {
+			return fmt.Errorf("unsupported action type: %s", action.ActionType)
+		}
+		observation, err := o.Observe()
+		if err != nil {
+			return err
+		}
+		observationCallback(observation)
+	}
+	return nil
 }
