@@ -4,6 +4,7 @@ go 1.24.5
 
 require (
 	github.com/invopop/jsonschema v0.13.0
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openai/openai-go/v2 v2.7.1
 )
 

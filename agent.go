@@ -17,23 +17,17 @@ type ReActAgent interface {
 	Run(string, func(string), func(Action), func(string), func(string)) error
 }
 
-type ToolDefinition[T any] struct {
-	Fn          func(T) any
-	Name        string
-	Description string
-}
-
 type OpenAIReActAgent struct {
 	Llm                  *OpenAILLM
 	ChatHistory          []*ChatMessage
 	SystemPromptTemplate *template.Template
-	Tools                []*ToolDefinition[any]
+	Tools                []Tool
 }
 
 func (o *OpenAIReActAgent) BuildSystemPrompt() (*ChatMessage, error) {
 	toolStr := "| Name | Description |\n|-------|-------|\n"
 	for _, tool := range o.Tools {
-		toolStr += fmt.Sprintf("| %s | %s |\n", tool.Name, tool.Description)
+		toolStr += fmt.Sprintf("| %s | %s |\n", tool.GetMetadata().Name, tool.GetMetadata().Description)
 	}
 	toolStr += "\n\n"
 	var buf strings.Builder
@@ -136,9 +130,16 @@ func (o *OpenAIReActAgent) Run(prompt string, thoughtCallback func(string), acti
 		} else if action.ActionType == "tool_call" {
 			actionCallback(*action)
 			for _, tool := range o.Tools {
-				if tool.Name == action.ToolCall.Name {
-					result := tool.Fn(action.ToolCall.Args)
-					o.ChatHistory = append(o.ChatHistory, &ChatMessage{Role: "user", Content: fmt.Sprintf("Tool call result from %s: %v", tool.Name, result)})
+				if tool.GetMetadata().Name == action.ToolCall.Name {
+					args, err := action.ToolCall.ArgsToMap()
+					if err != nil {
+						return err
+					}
+					result, err := tool.Execute(args)
+					if err != nil {
+						return err
+					}
+					o.ChatHistory = append(o.ChatHistory, &ChatMessage{Role: "user", Content: fmt.Sprintf("Tool call result from %s: %v", tool.GetMetadata().Name, result)})
 					break
 				}
 			}
