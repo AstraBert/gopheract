@@ -17,7 +17,7 @@ func generateSchema[T any]() any {
 	return schema
 }
 
-func LLMStructuredPredict[T any](llm LLM, chatHistory any, schemaName, schemaDescription string) (any, error) {
+func OpenAILLMStructuredPredict[T any](llm *OpenAILLM, chatHistory any, schemaName, schemaDescription string) (any, error) {
 	structuredOutputSchema := generateSchema[T]()
 
 	schemaParam := openai.ResponseFormatJSONSchemaJSONSchemaParam{

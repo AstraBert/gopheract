@@ -11,6 +11,7 @@ import (
 
 type ReActAgent interface {
 	BuildChatHistory() any
+	BuildSystemPrompt() (*ChatMessage, error)
 	Think() (string, error)
 	Act() (*Action, error)
 	Observe() (string, error)
@@ -36,7 +37,7 @@ func (o *OpenAIReActAgent) BuildSystemPrompt() (*ChatMessage, error) {
 		return nil, err
 	}
 	sysPrompt := buf.String()
-	return &ChatMessage{Role: "system", Content: sysPrompt}, nil
+	return NewChatMessage("system", sysPrompt), nil
 }
 
 func (o *OpenAIReActAgent) BuildChatHistory() any {
@@ -60,7 +61,7 @@ func (o *OpenAIReActAgent) Think() (string, error) {
 	if !ok {
 		return "", errors.New("error while generating the chat history: unexpected typing")
 	}
-	response, err := LLMStructuredPredict[Thought](o.Llm, typedChatHistory, "thought", "Thoughts about the action to perform next, based on current chat history")
+	response, err := OpenAILLMStructuredPredict[Thought](o.Llm, typedChatHistory, "thought", "Thoughts about the action to perform next, based on current chat history")
 	if err != nil {
 		return "", err
 	}
@@ -68,7 +69,7 @@ func (o *OpenAIReActAgent) Think() (string, error) {
 	if !ok {
 		return "", errors.New("error while generating the response: unexpected structured output")
 	}
-	o.ChatHistory = append(o.ChatHistory, &ChatMessage{Role: "assistant", Content: typedResponse.Thought})
+	o.ChatHistory = append(o.ChatHistory, NewChatMessage("assistant", typedResponse.Thought))
 	return typedResponse.Thought, nil
 }
 
@@ -78,7 +79,7 @@ func (o *OpenAIReActAgent) Observe() (string, error) {
 	if !ok {
 		return "", errors.New("error while generating the chat history: unexpected typing")
 	}
-	response, err := LLMStructuredPredict[Observation](o.Llm, typedChatHistory, "observation", "Observation about the current state of the task, based on chat history")
+	response, err := OpenAILLMStructuredPredict[Observation](o.Llm, typedChatHistory, "observation", "Observation about the current state of the task, based on chat history")
 	if err != nil {
 		return "", err
 	}
@@ -86,7 +87,7 @@ func (o *OpenAIReActAgent) Observe() (string, error) {
 	if !ok {
 		return "", errors.New("error while generating the response: unexpected structured output")
 	}
-	o.ChatHistory = append(o.ChatHistory, &ChatMessage{Role: "assistant", Content: typedResponse.Observation})
+	o.ChatHistory = append(o.ChatHistory, NewChatMessage("assistant", typedResponse.Observation))
 	return typedResponse.Observation, nil
 }
 
@@ -96,7 +97,7 @@ func (o *OpenAIReActAgent) Act() (*Action, error) {
 	if !ok {
 		return nil, errors.New("error while generating the chat history: unexpected typing")
 	}
-	response, err := LLMStructuredPredict[Action](o.Llm, typedChatHistory, "action", "Action to take, based on the chat history. Choose within _done (accompanied with a stop reason), if you think the conversation should stop, or tool_call (accompanied by a tool call) if you think the conversation should continue and you need more input from available tooling.")
+	response, err := OpenAILLMStructuredPredict[Action](o.Llm, typedChatHistory, "action", "Action to take, based on the chat history. Choose within _done (accompanied with a stop reason), if you think the conversation should stop, or tool_call (accompanied by a tool call) if you think the conversation should continue and you need more input from available tooling.")
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +114,7 @@ func (o *OpenAIReActAgent) Run(prompt string, thoughtCallback func(string), acti
 		return err
 	}
 	o.ChatHistory = append(o.ChatHistory, sysMsg)
-	o.ChatHistory = append(o.ChatHistory, &ChatMessage{Role: "user", Content: prompt})
+	o.ChatHistory = append(o.ChatHistory, NewChatMessage("user", prompt))
 	for {
 		thought, err := o.Think()
 		if err != nil {
@@ -139,7 +140,7 @@ func (o *OpenAIReActAgent) Run(prompt string, thoughtCallback func(string), acti
 					if err != nil {
 						return err
 					}
-					o.ChatHistory = append(o.ChatHistory, &ChatMessage{Role: "user", Content: fmt.Sprintf("Tool call result from %s: %v", tool.GetMetadata().Name, result)})
+					o.ChatHistory = append(o.ChatHistory, NewChatMessage("user", fmt.Sprintf("Tool call result from %s: %v", tool.GetMetadata().Name, result)))
 					break
 				}
 			}
