@@ -15,7 +15,7 @@ type ReActAgent interface {
 	Think() (string, error)
 	Act() (*Action, error)
 	Observe() (string, error)
-	Run(string, func(string), func(Action), func(string), func(string)) error
+	Run(string, func(string), func(Action), func(any), func(string), func(string)) error
 }
 
 type OpenAIReActAgent struct {
@@ -108,7 +108,7 @@ func (o *OpenAIReActAgent) Act() (*Action, error) {
 	return &typedResponse, nil
 }
 
-func (o *OpenAIReActAgent) Run(prompt string, thoughtCallback func(string), actionCallback func(Action), observationCallback func(string), stopCallback func(string)) error {
+func (o *OpenAIReActAgent) Run(prompt string, thoughtCallback func(string), actionCallback func(Action), toolEndCallback func(any), observationCallback func(string), stopCallback func(string)) error {
 	sysMsg, err := o.BuildSystemPrompt()
 	if err != nil {
 		return err
@@ -141,6 +141,7 @@ func (o *OpenAIReActAgent) Run(prompt string, thoughtCallback func(string), acti
 						return err
 					}
 					o.ChatHistory = append(o.ChatHistory, NewChatMessage("user", fmt.Sprintf("Tool call result from %s: %v", tool.GetMetadata().Name, result)))
+					toolEndCallback(result)
 					break
 				}
 			}
