@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -30,6 +31,7 @@ type BashParams struct {
 }
 
 func readFile(params ReadParams) (any, error) {
+	fmt.Println(params)
 	content, err := os.ReadFile(params.FilePath)
 	if err == nil {
 		return string(content), nil
@@ -75,9 +77,10 @@ func GetTools() []gopheract.Tool {
 		Description: "Edit a file (providing its path as `file_path` - string), by passing the old and new string (`old_string` and `new_string` parameters) and how many times to replace it (the `count` parameter, an integer)",
 		Fn:          editFile,
 	}
-	bashTool := gopheract.ToolDefinition[EditParams]{
+	bashTool := gopheract.ToolDefinition[BashParams]{
 		Name:        "Bash",
 		Description: "Execute a bash command by providing the main command (`command` parameter - string) and the arguments for it (`arguments` parameter - list of strings)",
+		Fn:          execBash,
 	}
 	return []gopheract.Tool{readTool, writeTool, editTool, bashTool}
 }

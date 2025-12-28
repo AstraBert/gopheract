@@ -13,5 +13,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	RunACP(*agent)
+	switch os.Args[1] {
+	case "acp":
+		RunACP(*agent)
+	case "print":
+		RunPrint(*agent, os.Args[2])
+	default:
+		log.Fatalf("Mode %s not supported", os.Args[1])
+	}
 }
