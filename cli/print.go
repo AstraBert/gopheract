@@ -26,9 +26,11 @@ func actionCallback(a gopheract.Action) {
 		args, err := a.ToolCall.ArgsToMap()
 		if err == nil {
 			fmt.Printf("Tool args: %v\n", args)
+		} else {
+			fmt.Printf("An error occurred while getting the arguments of the tool call: %s", err.Error())
 		}
 	}
-	if a.StopReason != nil {
+	if a.StopReason.Reason != "" {
 		fmt.Printf("Preparing to exit...")
 	}
 }

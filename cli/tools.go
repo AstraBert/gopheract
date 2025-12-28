@@ -10,24 +10,24 @@ import (
 )
 
 type ReadParams struct {
-	FilePath string `json:"file_path"`
+	FilePath string `json:"file_path" description:"Path to the file to read"`
 }
 
 type WriteParams struct {
-	FilePath string `json:"file_path"`
-	Content  string `json:"content"`
+	FilePath string `json:"file_path" description:"Path to the file to write"`
+	Content  string `json:"content" description:"Content to write to the file"`
 }
 
 type EditParams struct {
-	FilePath  string `json:"file_path"`
-	OldString string `json:"old_string"`
-	NewString string `json:"new_string"`
-	Count     int    `json:"count"`
+	FilePath  string `json:"file_path" description:"Path to the file to edit"`
+	OldString string `json:"old_string" description:"String to be replaced"`
+	NewString string `json:"new_string" description:"String to replace with"`
+	Count     int    `json:"count" description:"Number of replacements to make"`
 }
 
 type BashParams struct {
-	Command   string   `json:"command"`
-	Arguments []string `json:"arguments"`
+	Command   string   `json:"command" description:"Main bash command to execute"`
+	Arguments []string `json:"arguments" description:"Arguments for the bash command"`
 }
 
 func readFile(params ReadParams) (any, error) {
