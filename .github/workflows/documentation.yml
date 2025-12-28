@@ -3,7 +3,11 @@ name: Build and Deploy Documentation
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
+    paths:
+      - "*.go"
+      - "cli/*.go"
+      - "docs/config.json"
+  workflow_dispatch: 
 
 jobs:
   build-and-deploy:
