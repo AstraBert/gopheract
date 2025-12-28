@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"reflect"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/openai/openai-go/v2"
@@ -102,9 +104,20 @@ func NewChatMessage(role, content string) *ChatMessage {
 	}
 }
 
-type ToolMetadata struct {
-	Name        string
+type ToolParamsMetadata struct {
+	JsonDef     string
 	Description string
+	Type        string
+}
+
+func (tp *ToolParamsMetadata) ToString() string {
+	return fmt.Sprintf("JSON Definition of the parameter: %s; Description: %s; Type: %s", tp.JsonDef, tp.Description, tp.Type)
+}
+
+type ToolMetadata struct {
+	Name               string
+	Description        string
+	ParametersMetadata []ToolParamsMetadata
 }
 
 type Tool interface {
@@ -119,15 +132,40 @@ type ToolDefinition[T any] struct {
 }
 
 func (t ToolDefinition[T]) GetMetadata() ToolMetadata {
+	fnType := reflect.TypeOf(t.Fn)
+	paramMeta := []ToolParamsMetadata{}
+	if fnType.NumIn() > 0 {
+		paramType := fnType.In(0)
+		for i := range paramType.NumField() {
+			field := paramType.Field(i)
+			jsonDef := field.Tag.Get("json")
+			desc := field.Tag.Get("description")
+			meta := ToolParamsMetadata{
+				JsonDef:     jsonDef,
+				Description: desc,
+				Type:        field.Type.String(),
+			}
+			paramMeta = append(paramMeta, meta)
+		}
+	}
 	return ToolMetadata{
-		Name:        t.Name,
-		Description: t.Description,
+		Name:               t.Name,
+		Description:        t.Description,
+		ParametersMetadata: paramMeta,
 	}
 }
 
 func (t ToolDefinition[T]) Execute(params map[string]any) (any, error) {
 	var typedParams T
-	err := mapstructure.Decode(params, &typedParams)
+	config := &mapstructure.DecoderConfig{
+		TagName: "json",
+		Result:  &typedParams,
+	}
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return nil, err
+	}
+	err = decoder.Decode(params)
 	if err != nil {
 		return nil, err
 	}

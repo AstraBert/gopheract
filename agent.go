@@ -26,9 +26,13 @@ type OpenAIReActAgent struct {
 }
 
 func (o *OpenAIReActAgent) BuildSystemPrompt() (*ChatMessage, error) {
-	toolStr := "| Name | Description |\n|-------|-------|\n"
+	toolStr := "| Name | Description | Parameters |\n|-------|-------|-------|\n"
 	for _, tool := range o.Tools {
-		toolStr += fmt.Sprintf("| %s | %s |\n", tool.GetMetadata().Name, tool.GetMetadata().Description)
+		paramDesc := []string{}
+		for _, param := range tool.GetMetadata().ParametersMetadata {
+			paramDesc = append(paramDesc, param.ToString())
+		}
+		toolStr += fmt.Sprintf("| %s | %s | %s |\n", tool.GetMetadata().Name, tool.GetMetadata().Description, strings.Join(paramDesc, " - "))
 	}
 	toolStr += "\n\n"
 	var buf strings.Builder

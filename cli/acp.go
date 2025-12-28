@@ -150,7 +150,7 @@ func (a *CliAgent) takeTurn(ctx context.Context, sid string, prompt string) erro
 	observationCallback := func(s string) {
 		if err := a.conn.SessionUpdate(ctx, acp.SessionNotification{
 			SessionId: acp.SessionId(sid),
-			Update:    acp.UpdateAgentThoughtText(s),
+			Update:    acp.UpdateAgentMessageText("### Observation\n" + s),
 		}); err != nil {
 			log.Printf("An error occurred while sending the observation: %s\n", err.Error())
 			return
