@@ -1,2 +1,3 @@
 .venv/
 cli/cli
+.DS_Store
