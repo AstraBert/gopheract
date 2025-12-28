@@ -150,7 +150,7 @@ func (a *CliAgent) takeTurn(ctx context.Context, sid string, prompt string) erro
 	observationCallback := func(s string) {
 		if err := a.conn.SessionUpdate(ctx, acp.SessionNotification{
 			SessionId: acp.SessionId(sid),
-			Update:    acp.UpdateAgentThoughtText(s),
+			Update:    acp.UpdateAgentMessageText("### Observation\n" + s),
 		}); err != nil {
 			log.Printf("An error occurred while sending the observation: %s\n", err.Error())
 			return
@@ -178,25 +178,11 @@ func (a *CliAgent) takeTurn(ctx context.Context, sid string, prompt string) erro
 			} else {
 				message = "Executing bash command"
 			}
-			var toolKind acp.ToolKind
-			switch action.ToolCall.Name {
-			case "Read":
-				toolKind = acp.ToolKindRead
-			case "Write":
-				toolKind = acp.ToolKindEdit
-			case "Edit":
-				toolKind = acp.ToolKindEdit
-			case "Bash":
-				toolKind = acp.ToolKindExecute
-			default:
-				toolKind = acp.ToolKindOther
-			}
 			if err := a.conn.SessionUpdate(ctx, acp.SessionNotification{
 				SessionId: acp.SessionId(sid),
 				Update: acp.StartToolCall(
 					acp.ToolCallId(fmt.Sprintf("call_%d", toolCallId)),
 					message,
-					acp.WithStartKind(toolKind),
 					acp.WithStartStatus(acp.ToolCallStatusPending),
 					acp.WithStartRawInput(args),
 				),

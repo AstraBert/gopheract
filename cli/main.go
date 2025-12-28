@@ -13,5 +13,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	RunACP(*agent)
+	if len(os.Args) == 3 && os.Args[1] == "print" {
+		RunPrint(*agent, os.Args[2])
+	} else {
+		RunACP(*agent)
+	}
 }

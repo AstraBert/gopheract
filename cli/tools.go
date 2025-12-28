@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -9,27 +10,28 @@ import (
 )
 
 type ReadParams struct {
-	FilePath string `json:"file_path"`
+	FilePath string `json:"file_path" description:"Path to the file to read"`
 }
 
 type WriteParams struct {
-	FilePath string `json:"file_path"`
-	Content  string `json:"content"`
+	FilePath string `json:"file_path" description:"Path to the file to write"`
+	Content  string `json:"content" description:"Content to write to the file"`
 }
 
 type EditParams struct {
-	FilePath  string `json:"file_path"`
-	OldString string `json:"old_string"`
-	NewString string `json:"new_string"`
-	Count     int    `json:"count"`
+	FilePath  string `json:"file_path" description:"Path to the file to edit"`
+	OldString string `json:"old_string" description:"String to be replaced"`
+	NewString string `json:"new_string" description:"String to replace with"`
+	Count     int    `json:"count" description:"Number of replacements to make"`
 }
 
 type BashParams struct {
-	Command   string   `json:"command"`
-	Arguments []string `json:"arguments"`
+	Command   string   `json:"command" description:"Main bash command to execute"`
+	Arguments []string `json:"arguments" description:"Arguments for the bash command"`
 }
 
 func readFile(params ReadParams) (any, error) {
+	fmt.Println(params)
 	content, err := os.ReadFile(params.FilePath)
 	if err == nil {
 		return string(content), nil
@@ -75,9 +77,10 @@ func GetTools() []gopheract.Tool {
 		Description: "Edit a file (providing its path as `file_path` - string), by passing the old and new string (`old_string` and `new_string` parameters) and how many times to replace it (the `count` parameter, an integer)",
 		Fn:          editFile,
 	}
-	bashTool := gopheract.ToolDefinition[EditParams]{
+	bashTool := gopheract.ToolDefinition[BashParams]{
 		Name:        "Bash",
 		Description: "Execute a bash command by providing the main command (`command` parameter - string) and the arguments for it (`arguments` parameter - list of strings)",
+		Fn:          execBash,
 	}
 	return []gopheract.Tool{readTool, writeTool, editTool, bashTool}
 }
