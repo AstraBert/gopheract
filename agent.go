@@ -9,6 +9,7 @@ import (
 	"github.com/openai/openai-go/v2"
 )
 
+// Base interface for the ReactAgent
 type ReActAgent interface {
 	BuildChatHistory() any
 	BuildSystemPrompt() (*ChatMessage, error)
@@ -18,6 +19,7 @@ type ReActAgent interface {
 	Run(string, func(string), func(Action), func(any), func(string), func(string)) error
 }
 
+// Struct type that implements the ReActAgent interface for OpenAI
 type OpenAIReActAgent struct {
 	Llm                  *OpenAILLM
 	ChatHistory          []*ChatMessage
@@ -25,6 +27,9 @@ type OpenAIReActAgent struct {
 	Tools                []Tool
 }
 
+// Helper method that builds the system prompt from the base template provided when defininig the OpenAIReactAgent.
+//
+// This methods loads the tool name, description and parameters into the system prompt as a clean markdown table, returning the system prompt as a ChatMessage.
 func (o *OpenAIReActAgent) BuildSystemPrompt() (*ChatMessage, error) {
 	toolStr := "| Name | Description | Parameters |\n|-------|-------|-------|\n"
 	for _, tool := range o.Tools {
@@ -44,6 +49,7 @@ func (o *OpenAIReActAgent) BuildSystemPrompt() (*ChatMessage, error) {
 	return NewChatMessage("system", sysPrompt), nil
 }
 
+// Helper method that converts the chat history of the OpenAIReActAgent (slice of ChatMessage) into valid message types for the OpenAI SDK.
 func (o *OpenAIReActAgent) BuildChatHistory() any {
 	messages := make([]openai.ChatCompletionMessageParamUnion, 0, len(o.ChatHistory))
 	for _, message := range o.ChatHistory {
@@ -59,6 +65,7 @@ func (o *OpenAIReActAgent) BuildChatHistory() any {
 	return messages
 }
 
+// Method that implements the thinking part of the ReAct agent process, leveraging the `Thought` struct type for structured generation of a thinking response based on the previous chat history.
 func (o *OpenAIReActAgent) Think() (string, error) {
 	chatHistory := o.BuildChatHistory()
 	typedChatHistory, ok := chatHistory.([]openai.ChatCompletionMessageParamUnion)
@@ -77,6 +84,7 @@ func (o *OpenAIReActAgent) Think() (string, error) {
 	return typedResponse.Thought, nil
 }
 
+// Method that implements the observation part of the ReAct agent process, leveraging the `Observation` struct type for structured generation of an observational response based on the previous chat history.
 func (o *OpenAIReActAgent) Observe() (string, error) {
 	chatHistory := o.BuildChatHistory()
 	typedChatHistory, ok := chatHistory.([]openai.ChatCompletionMessageParamUnion)
@@ -95,6 +103,7 @@ func (o *OpenAIReActAgent) Observe() (string, error) {
 	return typedResponse.Observation, nil
 }
 
+// Method that implements the action part of the ReAct agent process, leveraging the `Action` struct type for structured generation of an action-oriented response based on the previous chat history.
 func (o *OpenAIReActAgent) Act() (*Action, error) {
 	chatHistory := o.BuildChatHistory()
 	typedChatHistory, ok := chatHistory.([]openai.ChatCompletionMessageParamUnion)
@@ -112,6 +121,9 @@ func (o *OpenAIReActAgent) Act() (*Action, error) {
 	return &typedResponse, nil
 }
 
+// Method that implements the Think -> Act -> Observe loop for a ReActAgent.
+//
+// Apart from the user prompt, this method also needs callback functions to communicate the execution of the loop steps (thoughts, actions, observations, tool call results and stopping) to the external environment.
 func (o *OpenAIReActAgent) Run(prompt string, thoughtCallback func(string), actionCallback func(Action), toolEndCallback func(any), observationCallback func(string), stopCallback func(string)) error {
 	sysMsg, err := o.BuildSystemPrompt()
 	if err != nil {
