@@ -7,6 +7,7 @@ import (
 	"github.com/openai/openai-go/v2"
 )
 
+// Private function to transform a struct type into a JSON schema
 func generateSchema[T any]() any {
 	reflector := jsonschema.Reflector{
 		AllowAdditionalProperties: false,
@@ -17,6 +18,7 @@ func generateSchema[T any]() any {
 	return schema
 }
 
+// Implementation of the structured generation function for an OpenAILLM, given the LLM itself, the chat history and the name and the description of the JSON schema used for structured generation
 func OpenAILLMStructuredPredict[T any](llm *OpenAILLM, chatHistory any, schemaName, schemaDescription string) (any, error) {
 	structuredOutputSchema := generateSchema[T]()
 

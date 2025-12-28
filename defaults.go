@@ -2,8 +2,7 @@ package gopheract
 
 import "text/template"
 
-// defaults like system prompt template and default constructors like NewDefaultXXX go here
-
+// Constructor for an OpenAIReactAgent starting based on defaults for the system prompt template and the chat history. Takes, as arguments, an OpenAI API key, an OpenAI model identifier and a list of tool defitions.
 func NewDefaultOpenAIReactAgent(apiKey, model string, tools []Tool) (*OpenAIReActAgent, error) {
 	sysPromptT := template.New("sysPromptT")
 	sysPromptT, err := sysPromptT.Parse(`You are designed to help with a variety of tasks, from answering questions to providing summaries to other types of analyses.
